@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FIRELINE — Wildfire Air Tanker</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="stage">
+  <canvas id="game" width="1280" height="800"></canvas>
+  <div id="hud">
+    <div class="hud-left">
+      <div class="hud-title">FIRELINE</div>
+      <div class="hud-stat"><span>ACRES BURNING</span><b id="hud-burning">0 ac</b></div>
+      <div class="hud-stat"><span>ACRES SAVED</span><b id="hud-saved">0 ac</b></div>
+      <div class="hud-stat"><span>CONTAINMENT</span><b id="hud-contain">0%</b></div>
+    </div>
+    <div class="hud-mid">
+      <div id="hud-banner" class="banner"></div>
+      <div class="hud-wind" id="hud-wind">WIND → E 14 kt</div>
+    </div>
+    <div class="hud-right">
+      <div class="hud-stat"><span>DROPS LEFT</span><b id="hud-drops">3</b></div>
+      <div class="hud-stat"><span>TANK</span><b id="hud-tank">3,000 gal</b></div>
+      <div class="hud-stat"><span>STRUCTURES AT RISK</span><b id="hud-risk">0</b></div>
+      <div class="hud-stat"><span>STRUCTURES</span><b id="hud-structures">6/6</b></div>
+    </div>
+  </div>
+  <div id="controls">
+    <button id="btn-left" title="Bank left">◀</button>
+    <button id="btn-drop" title="Drop retardant">DROP</button>
+    <button id="btn-right" title="Bank right">▶</button>
+    <span class="keys">← → steer · ↑ ↓ speed · SPACE drop · P plan</span>
+  </div>
+  <div id="screen"></div>
+  <div id="selftest">STATUS: BOOT</div>
+</div>
+<script type="module" src="src/game.js"></script>
+</body>
+</html>
