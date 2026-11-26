@@ -46,11 +46,13 @@ export function writeSeason(rec) {
   try { localStorage.setItem('fireline-season-v1', JSON.stringify(rec)); } catch { /* private mode */ }
 }
 
-export function recordRun(sim, m) {
+export function recordRun(sim, m, policy = 'player') {
   const rec = readSeason();
   const run = {
     outcome: sim.outcome || 'aborted',
     difficulty: sim.difficultyId,
+    seed: sim.seed,
+    policy,
     acresBurned: m.acresBurned,
     acresSaved: m.acresSaved,
     containment: m.containment,
@@ -59,6 +61,18 @@ export function recordRun(sim, m) {
     structuresLost: m.structuresLost,
     ticks: sim.tick,
   };
+  // De-duplicate: the same deterministic seed+policy run recorded in
+  // two sessions is ONE run, not two (round-5 P1-3: the results shot
+  // re-ran the exact seed-7 good run the season was seeded with, and
+  // the history listed it twice while the season totals counted it
+  // twice). The metric tuple is the fingerprint — two genuinely
+  // different runs never share outcome, ticks and all three acre
+  // figures at once.
+  const dup = rec.runs.some((r) =>
+    r.seed === run.seed && r.difficulty === run.difficulty && r.policy === run.policy
+    && r.outcome === run.outcome && r.ticks === run.ticks
+    && r.acresBurned === run.acresBurned && r.acresSaved === run.acresSaved);
+  if (dup) return rec;
   rec.runs.push(run);
   if (sim.outcome === 'contained') rec.fires++;
   rec.acresSaved += m.acresSaved;
@@ -80,6 +94,11 @@ function setBannerVisible(v) {
 
 export function showTitle(sim) {
   setBannerVisible(false);
+  // The HUD's live numbers have no business behind a menu (round-5
+  // P2-7: "1,010 ac burning" on a title screen). The title carries its
+  // own season record; the HUD bar hides until the screen does.
+  const hud = el('hud');
+  if (hud) hud.style.display = 'none';
   const rec = readSeason();
   const screen = el('screen');
   screen.className = 'screen title-screen';

@@ -18,7 +18,11 @@ const CAM_H = 12;       // camera height above ground, in cells — low
 // enough that the fire line ahead projects to mid-frame, above the
 // tanker sprite, instead of at the bottom edge behind it (round-1:
 // the cover's fire was half-hidden by the tanker at the frame bottom).
-const CAM_BACK = 14;    // camera sits this far behind the tanker
+const CAM_BACK = 26;    // camera sits this far behind the tanker —
+// far enough that the retardant line the tanker just laid (the ~10
+// cells behind it) is still in front of the camera and reads on the
+// ground as a red-pink band below the plane (round-5: at 14 the whole
+// wet line sat behind the camera and the cover showed no wet band).
 const CAM_AHEAD = 30;   // camera looks this far ahead of the tanker
 
 function makeCamera(sim) {
@@ -152,8 +156,13 @@ function drawFlames(ctx, sim, cam) {
   ctx.globalCompositeOperation = 'lighter';
   for (const f of shown) {
     const fl = flicker(sim.tick, f.x, f.y);
-    const hgt = Math.max(6, f.p.s * 1.9 * fl);
-    const wid = Math.max(4, f.p.s * 1.1);
+    // Billboards overlap their neighbours: a real front is a continuous
+    // wall of flame, not one dot per cell (round-5: 1.1-wide billboards
+    // read as scattered blobs even at 100+ burning cells; 0.9-wide
+    // tongues in attempt 3 read worse — the fire collapsed into one
+    // blob around the plane).
+    const hgt = Math.max(6, f.p.s * 2.3 * fl);
+    const wid = Math.max(4, f.p.s * 1.5);
     const g = ctx.createRadialGradient(f.p.x, f.p.y - hgt / 2, 1, f.p.x, f.p.y - hgt / 2, hgt);
     g.addColorStop(0, 'rgba(255,236,120,0.95)');
     g.addColorStop(0.45, 'rgba(255,140,20,0.75)');
@@ -196,8 +205,8 @@ function drawSmokeColumns(ctx, sim, cam) {
     const lean = 34; // wind pushes the tops east (screen-right here)
     const g = ctx.createLinearGradient(0, top, 0, p.y);
     g.addColorStop(0, 'rgba(46,38,32,0)');
-    g.addColorStop(0.55, 'rgba(46,38,32,0.22)');
-    g.addColorStop(1, 'rgba(46,38,32,0.38)');
+    g.addColorStop(0.55, 'rgba(46,38,32,0.35)');
+    g.addColorStop(1, 'rgba(46,38,32,0.58)');
     ctx.fillStyle = g;
     ctx.beginPath();
     ctx.moveTo(p.x - c.w * 0.4, p.y);
@@ -230,7 +239,7 @@ function drawSmoke(ctx, sim, cam) {
   puffs.sort((a, b) => b.p.z - a.p.z);
   for (const pu of puffs.slice(0, 260)) {
     const r = Math.max(5, pu.p.s * (0.9 + pu.age * 0.28));
-    const alpha = Math.max(0.05, 0.34 - pu.age * 0.011);
+    const alpha = Math.max(0.05, 0.42 - pu.age * 0.011);
     const g = ctx.createRadialGradient(pu.p.x, pu.p.y, 1, pu.p.x, pu.p.y, r);
     g.addColorStop(0, `rgba(58,50,46,${alpha})`);
     g.addColorStop(1, 'rgba(58,50,46,0)');
@@ -278,11 +287,15 @@ function drawRibbon(ctx, sim, cam) {
   // at the belly, thin where it hits the ground — and falls DOWN-screen:
   // from a chase cam the ground the retardant lands on is below the
   // plane, not ahead of it (round-1: the old stream ran up-screen
-  // behind the fuselage and was invisible). Drawn AFTER the tanker so
+  // behind the fuselage and was invisible). The impact point sits ~8
+  // cells BEHIND the tanker along its heading — the drops fall while
+  // the plane flies on, so they land behind the drop point, on the wet
+  // band (round-5: the old +2-cells-ahead anchor projected above the
+  // belly once the camera moved back to 26). Drawn AFTER the tanker so
   // the stream reads on top of the tail.
   const t = sim.tanker;
   if (t.dropping) {
-    const gp = project(cam, t.x + Math.cos(t.heading) * 2, t.y + Math.sin(t.heading) * 2, 0);
+    const gp = project(cam, t.x - Math.cos(t.heading) * 8, t.y - Math.sin(t.heading) * 8, 0);
     const sx = VIEW_W / 2 + 46, sy = 612;
     if (gp) {
       const dx = gp.x - sx, dy = gp.y - sy;
@@ -293,10 +306,10 @@ function drawRibbon(ctx, sim, cam) {
       grad.addColorStop(1, 'rgba(214,48,49,0.30)');
       ctx.fillStyle = grad;
       ctx.beginPath();
-      ctx.moveTo(sx + nx * 9, sy + ny * 9);
-      ctx.lineTo(gp.x + nx * 2, gp.y + ny * 2);
-      ctx.lineTo(gp.x - nx * 2, gp.y - ny * 2);
-      ctx.lineTo(sx - nx * 9, sy - ny * 9);
+      ctx.moveTo(sx + nx * 13, sy + ny * 13);
+      ctx.lineTo(gp.x + nx * 3, gp.y + ny * 3);
+      ctx.lineTo(gp.x - nx * 3, gp.y - ny * 3);
+      ctx.lineTo(sx - nx * 13, sy - ny * 13);
       ctx.closePath();
       ctx.fill();
       // Droplets breaking off along the stream.
@@ -304,7 +317,7 @@ function drawRibbon(ctx, sim, cam) {
         const f = k / 5;
         ctx.fillStyle = `rgba(224,62,62,${0.85 - f * 0.4})`;
         ctx.beginPath();
-        ctx.arc(sx + dx * f + (k % 2 ? 6 : -6), sy + dy * f, Math.max(2, 5 - f * 2), 0, Math.PI * 2);
+        ctx.arc(sx + dx * f + (k % 2 ? 8 : -8), sy + dy * f, Math.max(2, 6 - f * 2), 0, Math.PI * 2);
         ctx.fill();
       }
     }
@@ -339,6 +352,8 @@ function drawTanker(ctx, sim) {
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate(bank);
+  // 0.95 in attempt 3 let the fire mass swallow the plane; 1.15 keeps
+  // the wings clear of the flames beside the leg.
   ctx.scale(1.15, 1.15);
   // Prop discs on the wings (seen from behind: tall thin ellipses).
   ctx.fillStyle = 'rgba(40,30,20,0.32)';
